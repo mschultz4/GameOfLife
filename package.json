@@ -4,7 +4,8 @@
   "description": "Game of Life simulation",
   "main": "game-of-life.js",
   "dependencies": {
-    "react": "^15.3.2"
+    "react": "^15.3.2",
+    "react-dom": "^15.3.2"
   },
   "devDependencies": {},
   "scripts": {
