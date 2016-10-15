@@ -95,6 +95,7 @@ var Game = React.createClass({
         return {
             boardHeight: height,
             boardWidth: width,
+            generation: 0,
             cells:{} 
         };
     },
@@ -117,6 +118,7 @@ var Game = React.createClass({
                     handleStartClick={this._handleStartClick}
                     handleStopClick={this._handleStopClick}
                     />
+                <div>{this.state.generation}</div>
             </div>
         );
     },
@@ -189,6 +191,7 @@ var Game = React.createClass({
 
 
         this.setState({ cells: cells });
+        this.setState({generation: this.state.generation + 1});
     }
 
 });
