@@ -63,6 +63,7 @@ var Form = React.createClass({
                 </div>
                 <button type="submit">submit</button>
                 <button type="" onClick={this.props.handleStartClick}>start</button>
+                <button type="" onClick={this.props.handleStopClick}>stop</button>
             </form>
         );
     },
@@ -114,6 +115,7 @@ var Game = React.createClass({
                     boardWidth={this.state.boardWidth}
                     boardHeight={this.state.boardHeight}
                     handleStartClick={this._handleStartClick}
+                    handleStopClick={this._handleStopClick}
                     />
             </div>
         );
@@ -145,39 +147,46 @@ var Game = React.createClass({
     },
     _handleStartClick: function () {
         let self = this;
-        setInterval(function(){
+        let interval = setInterval(function(){
             self._runGeneration();
-        }, 1000);
+        }, 200);
+        
+        this.setState({interval: interval});
+    },
+    _handleStopClick: function(){
+       clearInterval(this.state.interval); 
     },
     _runGeneration: function () {
         let cells = Object.assign({}, this.state.cells);
-        for (cell in cells) {
-            switch (cell) {
-                case cell.liveNeighbors < 2:
-                    cell.alive = false;
-                    break;
+        
+        for (let id in cells) {
+            let alive = 0;
+            cells[id]
+                .neighbors
+                .forEach(function (x) {
+                    if (cells[x] && cells[x].alive) {
+                        alive += 1;
+                    }
+            });
 
-                case cell.alive && cell.liveNeighbors > 3:
-                    cell.alive = false;
-                    break;
-
-                case !cell.alive && cell.liveNeighbors === 3:
-                    cell.alive = true;
-                    break;
+            cells[id].liveNeighbors = alive;
+        }
+        
+        for (let id in cells) {
+            let cell = cells[id];
+            if (cell.liveNeighbors < 2){
+                cell.alive = false;
+            }
+            
+            if (cell.alive && cell.liveNeighbors > 3){
+                cell.alive = false;
+            }
+            
+            if (!cell.alive && cell.liveNeighbors === 3){
+                cell.alive = true;
             }
         }
 
-        for (cell in cells) {
-            let alive = 0;
-console.log(cell);
-            cell.neighbors.forEach(function (x) {
-                if (cells[x].alive) {
-                    alive += 1;
-                }
-            });
-
-            cell.liveNeighbors = alive;
-        }
 
         this.setState({ cells: cells });
     }
