@@ -1,84 +1,82 @@
-let React = require('react');
-let ReactDOM = require('react-dom');
+//let React = require('react');
+//let ReactDOM = require('react-dom');
 
-var Cell = React.createClass({
-    getInitialState: function () {
-        return {
-            alive: false,
-            neighborsAlive: 0 
-        };
-    },
-    render: function () {
-        return (
-            <td 
-                onClick={this._toggleAlive}
-                className={this.state.alive ? "alive" : "dead"}
+var Cell = function (props) {
+    return (
+        <td
+            id={props.id}
+            onClick={props.handleCellClick}
+            className={props.alive ? "alive" : "dead"}
             ></td>);
-    },
-    _toggleAlive: function(){
-        this.setState({alive: !this.state.alive});
-    }
-});
-
-var Row = function (props) {
-    var cells = [];
-
-    for (var i = 1; i <= props.cols; i++) {
-        cells.push(<Cell key={createId(props.cols, i)} x={props.cols} y={i}/>);
-    }
-
-    return (<tr>{cells}</tr>);
-};
+}
 
 var Board = function (props) {
-        var rows = [];
+    var rows = [];
 
-        for (var i = 1; i <= props.boardHeight; i++) {
-            rows.push(<Row key={i} cols={props.boardWidth}/>);
+    for (let i = 1; i <= props.boardHeight; i++) {
+        let cells = [];
+
+        for (let j = 1; j <= props.boardWidth; j++) {
+            let id = createId(i, j),
+                alive = props.cells[id].alive ? true : false;
+            cells.push(
+                <Cell
+                    id={id}
+                    key={id}
+                    alive={alive}
+                    handleCellClick={props.handleCellClick} />
+            );
         }
+        rows.push(<tr key={i}>{cells}</tr>);
+    }
 
-        return (<table><tbody>{rows}</tbody></table>);
+    return (<table><tbody>{rows}</tbody></table>);
 };
 
 var Form = React.createClass({
     getInitialState: function () {
         return {
             boardWidth: this.props.boardWidth,
-            boardHeight: this.props.boardHeight 
+            boardHeight: this.props.boardHeight
         };
     },
     render: function () {
         return (
             <form onSubmit={this._onSubmit}>
-                <label htmlFor="boardHeight">Height</label>
-                <input 
-                    id="boardHeight" 
-                    value={this.state.boardHeight} 
-                    type="text"
-                    onChange={this._onHeightInput}
-                />
-                <label htmlFor="boardWidth">Width</label>
-                <input 
-                    id="boardWidth" 
-                    value={this.state.boardWidth} 
-                    type="text"
-                    onChange={this._onWidthInput}
-                />
+                <div>
+                    <label htmlFor="boardHeight">Height</label>
+                    <input
+                        id="boardHeight"
+                        value={this.state.boardHeight}
+                        type="text"
+                        onChange={this._onHeightInput}
+                        />
+                </div>
+                <div>
+                    <label htmlFor="boardWidth">Width</label>
+                    <input
+                        id="boardWidth"
+                        value={this.state.boardWidth}
+                        type="text"
+                        onChange={this._onWidthInput}
+                        />
+                </div>
                 <button type="submit">submit</button>
+                <button type="" onClick={this.props.handleStartClick}>start</button>
             </form>
         );
     },
-    _onWidthInput: function(e){
-        if(typeof e.target.value === "string"){
-            this.setState({boardWidth: e.target.value});
+    _onWidthInput: function (e) {
+        if (typeof e.target.value === "string") {
+            this.setState({ boardWidth: e.target.value });
         }
     },
-    _onHeightInput: function(e){
-        if(typeof e.target.value === "string"){
-            this.setState({boardHeight: e.target.value});
+    _onHeightInput: function (e) {
+        if (typeof e.target.value === "string") {
+            this.setState({ boardHeight: e.target.value });
         }
     },
-    _onSubmit: function(e){
+    _onSubmit: function (e) {
         e.preventDefault();
 
         this.props.onBoardSizeChange({
@@ -90,36 +88,126 @@ var Form = React.createClass({
 
 var Game = React.createClass({
     getInitialState: function () {
+        let height = 20,
+            width = 20;
+
         return {
-            boardHeight: 20,
-            boardWidth: 20
+            boardHeight: height,
+            boardWidth: width,
+            cells:{} 
         };
+    },
+    componentWillMount: function(){
+       this._populateCells(this.state.boardHeight, this.state.boardWidth);
     },
     render: function () {
         return (
             <div>
-                <Board 
+                <Board
                     boardWidth={this.state.boardWidth}
                     boardHeight={this.state.boardHeight}
-                />
-                <Form 
+                    handleCellClick={this._handleCellClick}
+                    cells={this.state.cells}
+                    />
+                <Form
                     onBoardSizeChange={this._updateBoard}
                     boardWidth={this.state.boardWidth}
                     boardHeight={this.state.boardHeight}
-                />
+                    handleStartClick={this._handleStartClick}
+                    />
             </div>
         );
     },
-    _updateBoard: function(boardSize){
+    _updateBoard: function (boardSize) {
         this.setState({
             boardWidth: boardSize.boardWidth,
             boardHeight: boardSize.boardHeight
         });
+    },
+    _handleCellClick: function (e) {
+        let cells = Object.assign({}, this.state.cells);
+        cells[e.target.id].alive = cells[e.target.id].alive ? false : true;
+
+        this.setState({ cells: cells });
+    },
+    _populateCells: function (height, width) {
+        let cells = {};
+
+        for (let i = 1; i <= width; i++) {
+            for (let j = 1; j <= height; j++) {
+                let id = createId(i, j);
+                cells[id] = cell(i, j);
+            }
+        }
+        this.setState({cells: cells}, function(){
+            console.log(this.state.cells);
+        });
+    },
+    _handleStartClick: function () {
+        let self = this;
+        setInterval(function(){
+            self._runGeneration();
+        }, 1000);
+    },
+    _runGeneration: function () {
+        let cells = Object.assign({}, this.state.cells);
+        for (cell in cells) {
+            switch (cell) {
+                case cell.liveNeighbors < 2:
+                    cell.alive = false;
+                    break;
+
+                case cell.alive && cell.liveNeighbors > 3:
+                    cell.alive = false;
+                    break;
+
+                case !cell.alive && cell.liveNeighbors === 3:
+                    cell.alive = true;
+                    break;
+            }
+        }
+
+        for (cell in cells) {
+            let alive = 0;
+console.log(cell);
+            cell.neighbors.forEach(function (x) {
+                if (cells[x].alive) {
+                    alive += 1;
+                }
+            });
+
+            cell.liveNeighbors = alive;
+        }
+
+        this.setState({ cells: cells });
     }
+
 });
 
-function createId(x, y){
-    return .5*(x + y)*(x + y + 1) + y;
+function createId(x, y) {
+    return .5 * (x + y) * (x + y + 1) + y;
+}
+
+function cell(x, y) {
+    return {
+        alive: false,
+        liveNeighbors: 0,
+        neighbors: findNeighbors(x, y)
+    };
+
+    function findNeighbors(x, y) {
+        return [
+            createId(x - 1, y - 1),
+            createId(x + 1, y),
+            createId(x, y + 1),
+            createId(x + 1, y + 1),
+            createId(x, y - 1),
+            createId(x + 1, y - 1),
+            createId(x - 1, y + 1),
+            createId(x - 1, y)
+        ];
+    }
+
 }
 
 

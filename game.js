@@ -38,7 +38,7 @@ function gameOfLife(height, width) {
         for (let i = 1; i <= width; i++) {
             for (let j = 1; j <= height; j++) {
                 let id = createId(i, j);
-                cells[id] = cell(i, j)
+                cells[id] = cell(i, j);
             }
         }
     }
@@ -65,7 +65,7 @@ function cell(x, y) {
         ];
     }
 
-    function updateLiveNeighbors() {
+    function updateLiveNeighbors(cells) {
         let count = 0;
         this.neighbors
             .forEach(function (n) {
