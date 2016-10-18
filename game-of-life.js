@@ -17,7 +17,7 @@ var Board = function (props) {
         let cells = [];
 
         for (let j = 1; j <= props.boardWidth; j++) {
-            let id = createId(i, j),
+            let id = createId(j, i),
                 alive = props.cells[id].alive ? true : false;
             cells.push(
                 <Cell
@@ -44,26 +44,24 @@ var Form = React.createClass({
         return (
             <form onSubmit={this._onSubmit}>
                 <div>
-                    <label htmlFor="boardHeight">Height</label>
                     <input
                         id="boardHeight"
                         value={this.state.boardHeight}
                         type="text"
                         onChange={this._onHeightInput}
                         />
-                </div>
-                <div>
-                    <label htmlFor="boardWidth">Width</label>
+                    <i className="fa fa-times"></i>
                     <input
                         id="boardWidth"
                         value={this.state.boardWidth}
                         type="text"
                         onChange={this._onWidthInput}
                         />
+                    <button type="submit">update</button>
                 </div>
-                <button type="submit">submit</button>
-                <button type="" onClick={this.props.handleStartClick}>start</button>
-                <button type="" onClick={this.props.handleStopClick}>stop</button>
+                <button type="button" onClick={this.props.handleStartClick}><i className="fa fa-play"></i></button>
+                <button type="button" onClick={this.props.handleStopClick}><i className="fa fa-stop"></i></button>
+                <button type="button" onClick={this.props.handleClearClick}><i className="fa fa-eraser"></i></button>
             </form>
         );
     },
@@ -79,7 +77,6 @@ var Form = React.createClass({
     },
     _onSubmit: function (e) {
         e.preventDefault();
-
         this.props.onBoardSizeChange({
             boardHeight: this.state.boardHeight,
             boardWidth: this.state.boardWidth
@@ -89,18 +86,27 @@ var Form = React.createClass({
 
 var Game = React.createClass({
     getInitialState: function () {
-        let height = 20,
-            width = 20;
+        let height = 30,
+            width = 30,
+            cells = this._populateCells(width, height, true),
+            lastModified = [];
+
+        for (let id in cells) {
+            if (cells[id].alive) {
+                lastModified.push(id);
+            }
+        }
 
         return {
             boardHeight: height,
             boardWidth: width,
-            generation: 0,
-            cells:{} 
+            cells: cells,
+            lastModified: lastModified,
+            generation: 0
         };
     },
-    componentWillMount: function(){
-       this._populateCells(this.state.boardHeight, this.state.boardWidth);
+    componentDidMount: function () {
+        this._handleStartClick();
     },
     render: function () {
         return (
@@ -111,87 +117,129 @@ var Game = React.createClass({
                     handleCellClick={this._handleCellClick}
                     cells={this.state.cells}
                     />
+                <div>Generation: {this.state.generation}</div>
                 <Form
                     onBoardSizeChange={this._updateBoard}
                     boardWidth={this.state.boardWidth}
                     boardHeight={this.state.boardHeight}
                     handleStartClick={this._handleStartClick}
                     handleStopClick={this._handleStopClick}
+                    handleClearClick={this._handleClearClick}
                     />
-                <div>{this.state.generation}</div>
             </div>
         );
     },
+    _runGeneration: function () {
+        let cells = Object.assign({}, this.state.cells);
+        let nextModified = [];
+
+        this.state.lastModified.forEach(function (id) {
+            cells[id].neighbors.forEach(function (nId) {
+                let cell = cells[nId];
+                if (cell) {
+                    cell.liveNeighbors += cells[id].alive ? 1 : -1;
+                }
+            });
+        });
+
+        this.state.lastModified.forEach(function (id) {
+            cells[id].neighbors.forEach(function (nId) {
+                let cell = cells[nId];
+                if (cell) {
+                    if (cell.alive && cell.liveNeighbors < 2) {
+                        cell.alive = false;
+                        nextModified.push(nId);
+
+                    }
+
+                    if (cell.alive && cell.liveNeighbors > 3) {
+                        cell.alive = false;
+                        nextModified.push(nId);
+
+                    }
+
+                    if (!cell.alive && cell.liveNeighbors === 3) {
+                        cell.alive = true;
+                        nextModified.push(nId);
+
+                    }
+                }
+            });
+            let cell = cells[id];
+            if (cell) {
+                if (cell.alive && cell.liveNeighbors < 2) {
+                    cell.alive = false;
+                    nextModified.push(id);
+                }
+
+                if (cell.alive && cell.liveNeighbors > 3) {
+                    cell.alive = false;
+                    nextModified.push(id);
+                }
+
+                if (!cell.alive && cell.liveNeighbors === 3) {
+                    cell.alive = true;
+                    nextModified.push(id);
+                }
+            }
+        });
+
+        this.setState({
+            cells: cells,
+            lastModified: nextModified,
+            generation: this.state.generation + 1
+        });
+    },
     _updateBoard: function (boardSize) {
         this.setState({
+            cells: this._populateCells(boardSize.boardWidth, boardSize.boardHeight),
             boardWidth: boardSize.boardWidth,
-            boardHeight: boardSize.boardHeight
+            boardHeight: boardSize.boardHeight,
+            generation: 0
         });
     },
     _handleCellClick: function (e) {
-        let cells = Object.assign({}, this.state.cells);
+        let cells = Object.assign({}, this.state.cells),
+            modified = this.state.lastModified;
+
         cells[e.target.id].alive = cells[e.target.id].alive ? false : true;
 
-        this.setState({ cells: cells });
+        if (modified.indexOf(e.target.id) < 0) {
+            modified.push(e.target.id);
+        }
+
+        this.setState({ cells: cells, lastModified: modified });
     },
-    _populateCells: function (height, width) {
+    _populateCells: function (width, height, random) {
         let cells = {};
 
         for (let i = 1; i <= width; i++) {
             for (let j = 1; j <= height; j++) {
                 let id = createId(i, j);
                 cells[id] = cell(i, j);
+                cells[id].alive = random ? Math.random() > .5 ? true : false : false;
             }
         }
-        this.setState({cells: cells}, function(){
-            console.log(this.state.cells);
-        });
+
+        return cells;
     },
     _handleStartClick: function () {
         let self = this;
-        let interval = setInterval(function(){
+        let interval = setInterval(function () {
             self._runGeneration();
-        }, 200);
-        
-        this.setState({interval: interval});
+        }, 0);
+
+        this.setState({ interval: interval });
     },
-    _handleStopClick: function(){
-       clearInterval(this.state.interval); 
+    _handleStopClick: function () {
+        clearInterval(this.state.interval);
     },
-    _runGeneration: function () {
-        let cells = Object.assign({}, this.state.cells);
-        
-        for (let id in cells) {
-            let alive = 0;
-            cells[id]
-                .neighbors
-                .forEach(function (x) {
-                    if (cells[x] && cells[x].alive) {
-                        alive += 1;
-                    }
-            });
-
-            cells[id].liveNeighbors = alive;
-        }
-        
-        for (let id in cells) {
-            let cell = cells[id];
-            if (cell.liveNeighbors < 2){
-                cell.alive = false;
-            }
-            
-            if (cell.alive && cell.liveNeighbors > 3){
-                cell.alive = false;
-            }
-            
-            if (!cell.alive && cell.liveNeighbors === 3){
-                cell.alive = true;
-            }
-        }
-
-
-        this.setState({ cells: cells });
-        this.setState({generation: this.state.generation + 1});
+    _handleClearClick: function () {
+        this.setState({
+            cells: this._populateCells(this.state.boardWidth, this.state.boardHeight),
+            lastModified: [],
+            generation: 0
+        });
     }
 
 });
@@ -222,5 +270,5 @@ function cell(x, y) {
 
 }
 
-
 ReactDOM.render(<Game/>, document.getElementById('game'));
+
