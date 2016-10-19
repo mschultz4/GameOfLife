@@ -59,9 +59,11 @@ var Form = React.createClass({
                         />
                     <button type="submit">update</button>
                 </div>
-                <button type="button" onClick={this.props.handleStartClick}><i className="fa fa-play"></i></button>
-                <button type="button" onClick={this.props.handleStopClick}><i className="fa fa-stop"></i></button>
-                <button type="button" onClick={this.props.handleClearClick}><i className="fa fa-eraser"></i></button>
+                <div className="button-group">
+                    <button type="button" onClick={this.props.handleStartClick}><i className="fa fa-play"></i></button>
+                    <button type="button" onClick={this.props.handleStopClick}><i className="fa fa-stop"></i></button>
+                    <button type="button" onClick={this.props.handleClearClick}><i className="fa fa-eraser"></i></button>
+                </div>
             </form>
         );
     },
@@ -86,8 +88,8 @@ var Form = React.createClass({
 
 var Game = React.createClass({
     getInitialState: function () {
-        let height = 30,
-            width = 30,
+        let height = 25,
+            width = 50,
             cells = this._populateCells(width, height, true),
             lastModified = [];
 
@@ -111,13 +113,14 @@ var Game = React.createClass({
     render: function () {
         return (
             <div>
+                <h1>Conway's Game of Life</h1>
+                <h2>Generation: <span className="generation">{this.state.generation}</span></h2>
                 <Board
                     boardWidth={this.state.boardWidth}
                     boardHeight={this.state.boardHeight}
                     handleCellClick={this._handleCellClick}
                     cells={this.state.cells}
                     />
-                <div>Generation: {this.state.generation}</div>
                 <Form
                     onBoardSizeChange={this._updateBoard}
                     boardWidth={this.state.boardWidth}

@@ -5,25 +5,50 @@
     <meta charset="utf-8" />
     <title>game of life</title>
     <style>
+    
+        #game {
+            margin: 0 auto;
+            width: 50%;
+        }
+        
         td {
-            border: 1px solid gray;
+            border: 1px solid lightgray;
             width: 5px;
             height: 5px;
+            background-color: gray;
         }
         
         table {
             border-collapse: collapse;
-            margin: 0px auto;
+            margin: 0 auto;
         }
 
         input {
             width: 30px;
-        }
-
-        form {
-            background-color: whitesmoke;
+            text-align: center;
+            padding: 3px;
+            margin: 4px;
         }
         
+        button {
+            margin: 0 4px;
+        }
+
+        form, h1, h2 {
+            text-align: center;
+        }
+        
+        .generation{
+            color: mediumseagreen;
+            font-weight: 900;
+        }
+        .button-group{
+            background-color: mediumseagreen;
+            border-radius: 10px;
+            padding: 5px;
+            width: 150px;
+            margin: 0 auto;
+        }
         .alive {
             background-color: mediumseagreen;
         }
