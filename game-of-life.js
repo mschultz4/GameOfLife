@@ -57,7 +57,7 @@ var Form = React.createClass({
                         type="text"
                         onChange={this._onWidthInput}
                         />
-                    <button type="submit">update</button>
+                    <button type="submit">regenerate board</button>
                 </div>
                 <div className="button-group">
                     <button type="button" onClick={this.props.handleStartClick}><i className="fa fa-play"></i></button>
@@ -194,11 +194,21 @@ var Game = React.createClass({
         });
     },
     _updateBoard: function (boardSize) {
+        let  lastModified = [],
+             cells = this._populateCells(boardSize.boardWidth, boardSize.boardHeight, true);
+
+        for (let id in cells) {
+            if (cells[id].alive) {
+                lastModified.push(id);
+            }
+        }
+        
         this.setState({
-            cells: this._populateCells(boardSize.boardWidth, boardSize.boardHeight),
+            cells: cells,
             boardWidth: boardSize.boardWidth,
             boardHeight: boardSize.boardHeight,
-            generation: 0
+            generation: 0,
+            lastModified: lastModified
         });
     },
     _handleCellClick: function (e) {
