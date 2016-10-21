@@ -1,14 +1,21 @@
 //let React = require('react');
 //let ReactDOM = require('react-dom');
 
-var Cell = function (props) {
-    return (
-        <td
-            id={props.id}
-            onClick={props.handleCellClick}
-            className={props.alive ? "alive" : "dead"}
-            ></td>);
-}
+var Cell = React.createClass({
+    shouldComponentUpdate: function(){
+        return this.props.lastModified.includes(this.props.id);
+    },
+    render: function(){
+        return (
+            <td
+                id={this.props.id}
+                onClick={this.props.handleCellClick}
+                className={this.props.alive ? "alive" : "dead"}
+            >
+            </td>
+            );
+    }
+});
 
 var Board = function (props) {
     var rows = [];
@@ -24,7 +31,9 @@ var Board = function (props) {
                     id={id}
                     key={id}
                     alive={alive}
-                    handleCellClick={props.handleCellClick} />
+                    handleCellClick={props.handleCellClick} 
+                    lastModified={props.lastModified}
+                />
             );
         }
         rows.push(<tr key={i}>{cells}</tr>);
@@ -120,6 +129,7 @@ var Game = React.createClass({
                     boardHeight={this.state.boardHeight}
                     handleCellClick={this._handleCellClick}
                     cells={this.state.cells}
+                    lastModified={this.state.lastModified}
                     />
                 <Form
                     onBoardSizeChange={this._updateBoard}
