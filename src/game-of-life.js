@@ -1,267 +1,297 @@
-"use strict";
+let React = require('react');
+let ReactDOM = require('react-dom');
 
-const Tree = {
-    type: "tree",
-    display: 't',
-    weapon: null,
-    health: null,
-    block: true
+var Cell = React.createClass({
+    shouldComponentUpdate: function(){
+        return this.props.lastModified.includes(this.props.id);
+    },
+    render: function(){
+        return (
+            <td
+                id={this.props.id}
+                onClick={this.props.handleCellClick}
+                className={this.props.alive ? "alive" : "dead"}
+            >
+            </td>
+            );
+    }
+});
+
+var Board = function (props) {
+    var rows = [];
+
+    for (let i = 1; i <= props.boardHeight; i++) {
+        let cells = [];
+
+        for (let j = 1; j <= props.boardWidth; j++) {
+            let id = createId(j, i),
+                alive = props.cells[id].alive ? true : false;
+            cells.push(
+                <Cell
+                    id={id}
+                    key={id}
+                    alive={alive}
+                    handleCellClick={props.handleCellClick} 
+                    lastModified={props.lastModified}
+                />
+            );
+        }
+        rows.push(<tr key={i}>{cells}</tr>);
+    }
+
+    return (<table><tbody>{rows}</tbody></table>);
 };
 
-const Empty = {
-    type: 'empty',
-    display: '',
-    weapon: null,
-    health: null,
-    block: false
-};
-
-let Game = React.createClass({
+var Form = React.createClass({
     getInitialState: function () {
-        let player = {
-            type: 'player',
-            display: 'P',
-            weapon: { name: 'sword', strength: 1 },
-            health: 3,
-            level: 1,
-            block: true,
-            currentPosition: { y: 10, x: 15 }
+        return {
+            boardWidth: this.props.boardWidth,
+            boardHeight: this.props.boardHeight
+        };
+    },
+    render: function () {
+        return (
+            <form onSubmit={this._onSubmit}>
+                <div>
+                    <input
+                        id="boardHeight"
+                        value={this.state.boardHeight}
+                        type="text"
+                        onChange={this._onHeightInput}
+                        />
+                    <i className="fa fa-times"></i>
+                    <input
+                        id="boardWidth"
+                        value={this.state.boardWidth}
+                        type="text"
+                        onChange={this._onWidthInput}
+                        />
+                    <button type="submit">regenerate board</button>
+                </div>
+                <div className="button-group">
+                    <button type="button" onClick={this.props.handleStartClick}><i className="fa fa-play"></i></button>
+                    <button type="button" onClick={this.props.handleStopClick}><i className="fa fa-stop"></i></button>
+                    <button type="button" onClick={this.props.handleClearClick}><i className="fa fa-eraser"></i></button>
+                </div>
+            </form>
+        );
+    },
+    _onWidthInput: function (e) {
+        if (typeof e.target.value === "string") {
+            this.setState({ boardWidth: e.target.value });
+        }
+    },
+    _onHeightInput: function (e) {
+        if (typeof e.target.value === "string") {
+            this.setState({ boardHeight: e.target.value });
+        }
+    },
+    _onSubmit: function (e) {
+        e.preventDefault();
+        this.props.onBoardSizeChange({
+            boardHeight: this.state.boardHeight,
+            boardWidth: this.state.boardWidth
+        });
+    }
+});
+
+var Game = React.createClass({
+    getInitialState: function () {
+        let height = 25,
+            width = 50,
+            cells = this._populateCells(width, height, true),
+            lastModified = [];
+
+        for (let id in cells) {
+            if (cells[id].alive) {
+                lastModified.push(id);
+            }
         }
 
         return {
-            board: this._generateBoard(25, 25, player),
-            player: player
+            boardHeight: height,
+            boardWidth: width,
+            cells: cells,
+            lastModified: lastModified,
+            generation: 0
         };
     },
-    componentWillMount: function () {
-        let self = this;
-        document.addEventListener('keydown', function (e) {
-            self._move(e.keyCode);
-        });
-    },
-    componentWillUnmount: function () {
-        document.removeEventListener('keydown');
+    componentDidMount: function () {
+        this._handleStartClick();
     },
     render: function () {
         return (
             <div>
-                <Board board={this.state.board}/>
-                <Stats
-                    health={this.state.player.health}
-                    level={this.state.player.level}
-                    weapon={this.state.player.weapon.name}
+                <h1>Conway's Game of Life</h1>
+                <h2>Generation: <span className="generation">{this.state.generation}</span></h2>
+                <Board
+                    boardWidth={this.state.boardWidth}
+                    boardHeight={this.state.boardHeight}
+                    handleCellClick={this._handleCellClick}
+                    cells={this.state.cells}
+                    lastModified={this.state.lastModified}
+                    />
+                <Form
+                    onBoardSizeChange={this._updateBoard}
+                    boardWidth={this.state.boardWidth}
+                    boardHeight={this.state.boardHeight}
+                    handleStartClick={this._handleStartClick}
+                    handleStopClick={this._handleStopClick}
+                    handleClearClick={this._handleClearClick}
                     />
             </div>
         );
-
     },
-    _move: function (keyCode) {
-        let player = Object.assign({}, this.state.player),
-            y = player.currentPosition.y,
-            x = player.currentPosition.x,
-            board = _.cloneDeep(this.state.board),
-            interactions = [];
+    _runGeneration: function () {
+        let cells = Object.assign({}, this.state.cells);
+        let nextModified = [];
 
-        switch (keyCode) {
-            case 38:
-                if (!this.state.board[y - 1][x].block) {
-                    board[y][x] = Empty;
-                    board[y - 1][x] = player;
-                    y -= 1;
-                }
-                break;
-            case 40:
-                if (!this.state.board[y + 1][x].block) {
-                    board[y][x] = Empty;
-                    board[y + 1][x] = player;
-                    y += 1;
-                }
-                break;
-            case 39:
-                if (!this.state.board[y][x + 1].block) {
-                    board[y][x] = Empty;
-                    board[y][x + 1] = player;
-                    x += 1;
-                }
-                break;
-            case 37:
-                if (!this.state.board[y][x - 1].block) {
-                    board[y][x] = Empty;
-                    board[y][x - 1] = player;
-                    x -= 1;
-                }
-                break;
-
-        }
-
-        player.currentPosition = { y: y, x: x };
-
-        interactions.push(this.state.board[y][x]);
-        getSurroundingPositions(player.currentPosition)
-            .forEach(pos => {
-                if (this.state.board[pos.y][pos.x].type === 'monster') {
-                    interactions.push(this.state.board[pos.y][pos.x]);
+        this.state.lastModified.forEach(function (id) {
+            cells[id].neighbors.forEach(function (nId) {
+                let cell = cells[nId];
+                if (cell) {
+                    cell.liveNeighbors += cells[id].alive ? 1 : -1;
                 }
             });
-
-        interactions.forEach(obj => {
-            switch (obj.type) {
-                case 'monster':
-                    console.log('holy cow');
-                    break;
-                case 'heart':
-                    player.health = player.health < 10 ? player.health + 1 : player.health;
-                    break;
-            }
         });
 
+        this.state.lastModified.forEach(function (id) {
+            cells[id].neighbors.forEach(function (nId) {
+                let cell = cells[nId];
+                if (cell) {
+                    if (cell.alive && cell.liveNeighbors < 2) {
+                        cell.alive = false;
+                        nextModified.push(nId);
 
-        this.setState({
-            player: player,
-            board: board
-        });
+                    }
 
-    },
-    _generateBoard: function (height, width, player) {
+                    if (cell.alive && cell.liveNeighbors > 3) {
+                        cell.alive = false;
+                        nextModified.push(nId);
 
-        let board = [];
+                    }
 
-        for (let i = 0; i < height; i++) {
-            let row = [];
-            for (let j = 0; j < width; j++) {
-                let cell;
+                    if (!cell.alive && cell.liveNeighbors === 3) {
+                        cell.alive = true;
+                        nextModified.push(nId);
 
-                if (i === 0 || j === 0 || i === (height - 1) || j === (width - 1)) {
-                    cell = Tree;
-                } else {
-                    cell = createRandomCell();
+                    }
+                }
+            });
+            let cell = cells[id];
+            if (cell) {
+                if (cell.alive && cell.liveNeighbors < 2) {
+                    cell.alive = false;
+                    nextModified.push(id);
                 }
 
-                row.push(cell);
+                if (cell.alive && cell.liveNeighbors > 3) {
+                    cell.alive = false;
+                    nextModified.push(id);
+                }
+
+                if (!cell.alive && cell.liveNeighbors === 3) {
+                    cell.alive = true;
+                    nextModified.push(id);
+                }
             }
-            board.push(row);
+        });
+
+        this.setState({
+            cells: cells,
+            lastModified: nextModified,
+            generation: this.state.generation + 1
+        });
+    },
+    _updateBoard: function (boardSize) {
+        let  lastModified = [],
+             cells = this._populateCells(boardSize.boardWidth, boardSize.boardHeight, true);
+
+        for (let id in cells) {
+            if (cells[id].alive) {
+                lastModified.push(id);
+            }
+        }
+        
+        this.setState({
+            cells: cells,
+            boardWidth: boardSize.boardWidth,
+            boardHeight: boardSize.boardHeight,
+            generation: 0,
+            lastModified: lastModified
+        });
+    },
+    _handleCellClick: function (e) {
+        let cells = Object.assign({}, this.state.cells),
+            modified = this.state.lastModified;
+
+        cells[e.target.id].alive = cells[e.target.id].alive ? false : true;
+
+        if (modified.indexOf(e.target.id) < 0) {
+            modified.push(e.target.id);
         }
 
-        board[player.currentPosition.y][player.currentPosition.x] = player;
+        this.setState({ cells: cells, lastModified: modified });
+    },
+    _populateCells: function (width, height, random) {
+        let cells = {};
 
-        return board;
+        for (let i = 1; i <= width; i++) {
+            for (let j = 1; j <= height; j++) {
+                let id = createId(i, j);
+                cells[id] = cell(i, j);
+                cells[id].alive = random ? Math.random() > .5 ? true : false : false;
+            }
+        }
+
+        return cells;
+    },
+    _handleStartClick: function () {
+        let self = this;
+        let interval = setInterval(function () {
+            self._runGeneration();
+        }, 0);
+
+        this.setState({ interval: interval });
+    },
+    _handleStopClick: function () {
+        clearInterval(this.state.interval);
+    },
+    _handleClearClick: function () {
+        this.setState({
+            cells: this._populateCells(this.state.boardWidth, this.state.boardHeight),
+            lastModified: [],
+            generation: 0
+        });
     }
+
 });
 
-let Board = function (props) {
-    let rows = [];
-    props.board.forEach(function (row, index) {
-        let cells = [];
-        row.forEach(function (cell, index) {
-            cells.push(<Cell key={index} display={cell.display}/>);
-        });
-        rows.push(<tr key={index}>{cells}</tr>);
-    });
-    return (<table className="game-board"><tbody>{rows}</tbody></table>);
+function createId(x, y) {
+    return .5 * (x + y) * (x + y + 1) + y;
 }
 
-let Cell = function (props) {
-    return (<td className={props.display}>{props.display}</td>);
-};
+function cell(x, y) {
+    return {
+        alive: false,
+        liveNeighbors: 0,
+        neighbors: findNeighbors(x, y)
+    };
 
-let Stats = function (props) {
-    return (
-        <table>
-            <thead>
-                <tr>
-                    <th>level</th>
-                    <th>health</th>
-                    <th>weapon</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>{props.level}</td>
-                    <td>{props.health}</td>
-                    <td>{props.weapon}</td>
-                </tr>
-            </tbody>
-        </table>)
-};
+    function findNeighbors(x, y) {
+        return [
+            createId(x - 1, y - 1),
+            createId(x + 1, y),
+            createId(x, y + 1),
+            createId(x + 1, y + 1),
+            createId(x, y - 1),
+            createId(x + 1, y - 1),
+            createId(x - 1, y + 1),
+            createId(x - 1, y)
+        ];
+    }
+
+}
 
 ReactDOM.render(<Game/>, document.getElementById('game'));
 
-
-function createRandomCell() {
-    let i = Math.ceil(Math.random() * 100);
-
-    if (i < 5) {
-        return createMonster();
-    }
-
-    if (i >= 10 && i < 20) {
-        return Tree
-    }
-
-    if (i >= 20 && i < 40) {
-        return createItem();
-    }
-
-    return Empty;
-}
-
-function createMonster() {
-    return {
-        type: "monster",
-        display: 'm',
-        weapon: { name: 'claws', strength: Math.ceil(Math.random() * 10) },
-        health: 10,
-        block: true
-    };
-}
-
-function createItem() {
-    let i = Math.ceil(Math.random() * 100),
-        type = '',
-        display = '';
-
-    if (i < 5) {
-        type = 'heart';
-        display = 'h'
-    } else if (i >= 10 && i < 20) {
-        type = 'axe';
-        display = 'a';
-    } else if (i >= 20 && i < 40) {
-        type = 'bat';
-        display = 'b';
-    } else {
-        type = 'zebra';
-        display = 'z';
-    }
-
-    return {
-        type: type,
-        display: display,
-        weapon: null,
-        health: null,
-        block: false
-    };
-}
-
-function getSurroundingPositions(pos) {
-    let positions = [];
-
-    positions.push({ x: pos.x, y: pos.y + 1 });
-    positions.push({ x: pos.x, y: pos.y - 1 });
-    positions.push({ x: pos.x + 1, y: pos.y });
-    positions.push({ x: pos.x - 1, y: pos.y });
-
-    return positions;
-}
-
-function fight(player, monster){
-    while(player.health > 0 && monster.health > 0){
-        monster.health -= Math.ceil(Math.random() * player.weapon.strength);
-
-        if(monster.health > 0){
-            player.health -= Math.ceil(Math.random() * monster.weapon.strength);
-        }
-    }
-
-    return [player, monster];
-}
